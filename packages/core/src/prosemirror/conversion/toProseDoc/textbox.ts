@@ -15,7 +15,7 @@ import type { Paragraph, TextBox, Shape } from '../../../types/document';
 import { emuToPixels } from '../../../docx/imageParser';
 import type { StyleResolver } from '../../styles';
 import { isAnchoredDocxTextBox, textBoxAnchorAttrsFromDocx } from '../textBoxAnchors';
-import { convertParagraph } from './paragraph';
+import { convertParagraphSegments } from './paragraph';
 
 /**
  * Convert a paragraph block to PM nodes, extracting text boxes as sibling nodes.
@@ -26,9 +26,10 @@ export function convertParagraphWithTextBoxes(
   styleResolver: StyleResolver | null
 ): PMNode[] {
   const textBoxes = extractTextBoxesFromParagraph(block);
-  const pmParagraph = convertParagraph(block, styleResolver);
+  const pmParagraphs = convertParagraphSegments(block, styleResolver);
   const nodes: PMNode[] = [];
-  const isEmptyAfterExtraction = textBoxes.length > 0 && pmParagraph.content.size === 0;
+  const isEmptyAfterExtraction =
+    textBoxes.length > 0 && pmParagraphs.every((paragraph) => paragraph.content.size === 0);
   const { anchored, inFlow } = partitionTextBoxesByAnchor(textBoxes);
 
   for (const tb of anchored) {
@@ -36,7 +37,7 @@ export function convertParagraphWithTextBoxes(
   }
 
   if (!isEmptyAfterExtraction) {
-    nodes.push(pmParagraph);
+    nodes.push(...pmParagraphs);
   }
 
   for (const tb of inFlow) {
@@ -130,7 +131,7 @@ function convertTextBox(textBox: TextBox, styleResolver: StyleResolver | null): 
   // Convert text box content (paragraphs) to PM nodes
   const contentNodes: PMNode[] = [];
   for (const para of textBox.content) {
-    contentNodes.push(convertParagraph(para, styleResolver));
+    contentNodes.push(...convertParagraphSegments(para, styleResolver));
   }
 
   // Ensure at least one paragraph

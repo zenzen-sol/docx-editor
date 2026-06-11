@@ -190,13 +190,15 @@ function convertParagraphAttrs(
     }));
   }
 
-  // Page break control. `renderedPageBreakBefore` (Word's
-  // `<w:lastRenderedPageBreak/>` marker) is informational — it records where
-  // Word last broke the page. ECMA-376 §17.4.16 does NOT specify it as a
-  // forced break, and Word does not honor it as one on reflow. Preserve the
-  // attr through round-trip so the marker is re-emitted on save, but do not
-  // act on it during layout.
-  if (pmAttrs.pageBreakBefore) {
+  // Page break control. `pageBreakBefore` is an authored hard break.
+  // `renderedPageBreakBefore` is Word's cached pagination marker
+  // (`<w:lastRenderedPageBreak/>`). It is not semantic DOCX content, but it is
+  // the only page-authoritative anchor Word leaves for unchanged documents.
+  // The parser/conversion layer preserves inline cached markers by splitting
+  // paragraphs at the marker and setting this attr on the continuation
+  // paragraph, which lets the viewer render Word-cached pages without
+  // serializing those markers as hard breaks on save.
+  if (pmAttrs.pageBreakBefore || pmAttrs.renderedPageBreakBefore) {
     attrs.pageBreakBefore = true;
   }
   if (pmAttrs.keepNext) {

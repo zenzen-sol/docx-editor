@@ -24,6 +24,7 @@ import type {
   TextContent,
   TabContent,
   BreakContent,
+  RenderedPageBreakContent,
   SymbolContent,
   NoteReferenceContent,
   NoteRefMarkContent,
@@ -653,7 +654,10 @@ function parseRunContents(
         break;
 
       case 'lastRenderedPageBreak':
-        // Marker for last rendered page break - informational only
+        // Word's cached pagination marker. Preserve it as distinct metadata:
+        // it is useful for read-only cached-page rendering, but it is not an
+        // authored hard page break.
+        contents.push({ type: 'renderedPageBreak' } as RenderedPageBreakContent);
         break;
 
       case 'cr':

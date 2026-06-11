@@ -784,6 +784,12 @@ export type RelationshipMap = Map<string, Relationship>;
 export type RelationshipType = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/header' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/footnotes' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/endnotes' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/webSettings' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/oleObject' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart' | 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData' | string;
 
 // @public
+export interface RenderedPageBreakContent {
+    // (undocumented)
+    type: 'renderedPageBreak';
+}
+
+// @public
 export interface Run {
     content: RunContent[];
     formatting?: TextFormatting;
@@ -793,7 +799,7 @@ export interface Run {
 }
 
 // @public
-export type RunContent = TextContent | TabContent | BreakContent | SymbolContent | NoteReferenceContent | NoteRefMarkContent | SeparatorContent | FieldCharContent | InstrTextContent | SoftHyphenContent | NoBreakHyphenContent | DrawingContent | ShapeContent;
+export type RunContent = TextContent | TabContent | BreakContent | RenderedPageBreakContent | SymbolContent | NoteReferenceContent | NoteRefMarkContent | SeparatorContent | FieldCharContent | InstrTextContent | SoftHyphenContent | NoBreakHyphenContent | DrawingContent | ShapeContent;
 
 // @public
 export interface RunPropertyChange {

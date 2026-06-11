@@ -194,6 +194,141 @@ describe('toProseDoc — table cell theme color resolution', () => {
   });
 });
 
+describe('toProseDoc — cached Word page markers', () => {
+  test('splits an inline rendered page break into a cached-page paragraph boundary', () => {
+    const doc = toProseDoc({
+      package: {
+        document: {
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                {
+                  type: 'run',
+                  content: [
+                    { type: 'text', text: 'Previous page' },
+                    { type: 'renderedPageBreak' },
+                    { type: 'text', text: 'Next page' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(doc.childCount).toBe(2);
+    expect(doc.child(0).textContent).toBe('Previous page');
+    expect(doc.child(0).attrs.renderedPageBreakBefore).toBeNull();
+    expect(doc.child(1).textContent).toBe('Next page');
+    expect(doc.child(1).attrs.renderedPageBreakBefore).toBe(true);
+  });
+
+  test('carries non-rendered prefix markers to the cached-page continuation', () => {
+    const doc = toProseDoc({
+      package: {
+        document: {
+          content: [
+            {
+              type: 'paragraph',
+              renderedPageBreakBefore: true,
+              content: [
+                { type: 'bookmarkStart', id: 1, name: 'pageStart' },
+                {
+                  type: 'run',
+                  content: [{ type: 'renderedPageBreak' }, { type: 'text', text: 'Next page' }],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(doc.childCount).toBe(1);
+    expect(doc.child(0).textContent).toBe('Next page');
+    expect(doc.child(0).attrs.renderedPageBreakBefore).toBe(true);
+    expect(doc.child(0).attrs.bookmarks).toEqual([{ id: 1, name: 'pageStart' }]);
+  });
+
+  test('splits inline rendered page breaks inside hyperlinks', () => {
+    const doc = toProseDoc({
+      package: {
+        document: {
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                {
+                  type: 'hyperlink',
+                  href: 'https://example.com',
+                  children: [
+                    {
+                      type: 'run',
+                      content: [
+                        { type: 'text', text: 'Previous link' },
+                        { type: 'renderedPageBreak' },
+                        { type: 'text', text: 'Next link' },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(doc.childCount).toBe(2);
+    expect(doc.child(0).textContent).toBe('Previous link');
+    expect(doc.child(1).textContent).toBe('Next link');
+    expect(doc.child(1).attrs.renderedPageBreakBefore).toBe(true);
+    expect(doc.child(1).firstChild?.marks.some((mark) => mark.type.name === 'hyperlink')).toBe(
+      true
+    );
+  });
+
+  test('splits inline rendered page breaks inside tracked-change wrappers', () => {
+    const doc = toProseDoc({
+      package: {
+        document: {
+          content: [
+            {
+              type: 'paragraph',
+              content: [
+                {
+                  type: 'insertion',
+                  info: { id: 7, author: 'Word User' },
+                  content: [
+                    {
+                      type: 'run',
+                      content: [
+                        { type: 'text', text: 'Previous insertion' },
+                        { type: 'renderedPageBreak' },
+                        { type: 'text', text: 'Next insertion' },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    expect(doc.childCount).toBe(2);
+    expect(doc.child(0).textContent).toBe('Previous insertion');
+    expect(doc.child(1).textContent).toBe('Next insertion');
+    expect(doc.child(1).attrs.renderedPageBreakBefore).toBe(true);
+    expect(doc.child(1).firstChild?.marks.some((mark) => mark.type.name === 'insertion')).toBe(
+      true
+    );
+  });
+});
+
 describe('ProseMirror table cell DOM serialization', () => {
   test('OOXML auto border colors serialize to valid CSS colors', () => {
     const borders = {

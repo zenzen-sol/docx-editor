@@ -57,6 +57,7 @@ export type {
   TextContent,
   TabContent,
   BreakContent,
+  RenderedPageBreakContent,
   SymbolContent,
   NoteReferenceContent,
   NoteRefMarkContent,

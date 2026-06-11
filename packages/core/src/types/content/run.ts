@@ -41,6 +41,19 @@ export interface BreakContent {
 }
 
 /**
+ * Word's cached page boundary marker (`w:lastRenderedPageBreak`).
+ *
+ * This is not an authored hard page break. It records where Word last paginated
+ * the document and is useful for read-only "Word cached page" rendering and
+ * trace/navigation. It must stay distinct from {@link BreakContent} so editing
+ * and save paths do not accidentally turn cached layout metadata into semantic
+ * DOCX content.
+ */
+export interface RenderedPageBreakContent {
+  type: 'renderedPageBreak';
+}
+
+/**
  * Symbol character (special font character)
  */
 export interface SymbolContent {
@@ -146,6 +159,7 @@ export type RunContent =
   | TextContent
   | TabContent
   | BreakContent
+  | RenderedPageBreakContent
   | SymbolContent
   | NoteReferenceContent
   | NoteRefMarkContent

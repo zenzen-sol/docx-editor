@@ -148,6 +148,217 @@ export function convertParagraph(
 }
 
 /**
+ * Convert a paragraph, splitting at Word cached page markers that appear in
+ * run flow. Word writes `<w:lastRenderedPageBreak/>` at the exact inline
+ * position where it last paginated the document; collapsing that to a single
+ * paragraph-level flag loses half the MSA markers. The split keeps the marker
+ * as `renderedPageBreakBefore` on the continuation paragraph so layout can
+ * produce a Word-cached-page view without turning it into an authored hard
+ * `pageBreakBefore`.
+ */
+export function convertParagraphSegments(
+  paragraph: Paragraph,
+  styleResolver: StyleResolver | null,
+  activeCommentIds?: Set<number>,
+  extraRunFormatting?: TextFormatting
+): PMNode[] {
+  return splitParagraphAtRenderedPageBreaks(paragraph).map((segment) =>
+    convertParagraph(segment, styleResolver, activeCommentIds, extraRunFormatting)
+  );
+}
+
+function splitParagraphAtRenderedPageBreaks(paragraph: Paragraph): Paragraph[] {
+  const segments: Array<{ breakBefore: boolean; content: Paragraph['content'] }> = [
+    { breakBefore: Boolean(paragraph.renderedPageBreakBefore), content: [] },
+  ];
+
+  for (const item of paragraph.content) {
+    for (const event of splitParagraphContentItem(item)) {
+      if (event.type === 'content') {
+        currentSegment(segments).content.push(event.content);
+        continue;
+      }
+
+      const current = currentSegment(segments);
+      const prefix = segmentHasRenderableContent(current) ? [] : current.content.splice(0);
+      segments.push({ breakBefore: true, content: prefix });
+    }
+  }
+
+  if (segments.length === 1) {
+    return [paragraph];
+  }
+
+  return segments.filter(segmentHasRenderableContent).map((segment, index, filtered) => ({
+    ...paragraph,
+    content: segment.content,
+    renderedPageBreakBefore: segment.breakBefore || undefined,
+    sectionProperties: index === filtered.length - 1 ? paragraph.sectionProperties : undefined,
+  }));
+}
+
+function currentSegment(segments: Array<{ breakBefore: boolean; content: Paragraph['content'] }>): {
+  breakBefore: boolean;
+  content: Paragraph['content'];
+} {
+  return segments[segments.length - 1];
+}
+
+type ParagraphItem = Paragraph['content'][number];
+type SplitEvent<T> = { type: 'content'; content: T } | { type: 'break' };
+
+function splitParagraphContentItem(item: ParagraphItem): SplitEvent<ParagraphItem>[] {
+  switch (item.type) {
+    case 'run':
+      return splitRunEvents(item);
+    case 'hyperlink':
+      return splitHyperlinkEvents(item);
+    case 'inlineSdt':
+      return splitInlineSdtEvents(item);
+    case 'insertion':
+    case 'deletion':
+    case 'moveFrom':
+    case 'moveTo':
+      return splitTrackedChangeEvents(item);
+    default:
+      return [{ type: 'content', content: item }];
+  }
+}
+
+function splitRunEvents(run: Run): SplitEvent<Run>[] {
+  const events: SplitEvent<Run>[] = [];
+  let runContent: RunContent[] = [];
+
+  for (const runContentItem of run.content) {
+    if (runContentItem.type !== 'renderedPageBreak') {
+      runContent.push(runContentItem);
+      continue;
+    }
+
+    if (runContent.length > 0) {
+      events.push({ type: 'content', content: { ...run, content: runContent } });
+      runContent = [];
+    }
+    events.push({ type: 'break' });
+  }
+
+  if (runContent.length > 0) {
+    events.push({ type: 'content', content: { ...run, content: runContent } });
+  }
+
+  return events;
+}
+
+function splitHyperlinkEvents(link: Hyperlink): SplitEvent<Hyperlink>[] {
+  return splitWrappedEvents(link.children, splitHyperlinkChildEvents, (children) => ({
+    ...link,
+    children,
+  }));
+}
+
+function splitHyperlinkChildEvents(
+  child: Hyperlink['children'][number]
+): SplitEvent<Hyperlink['children'][number]>[] {
+  return child.type === 'run' ? splitRunEvents(child) : [{ type: 'content', content: child }];
+}
+
+function splitInlineSdtEvents(sdt: InlineSdt): SplitEvent<InlineSdt>[] {
+  return splitWrappedEvents(sdt.content, splitInlineSdtChildEvents, (content) => ({
+    ...sdt,
+    content,
+  }));
+}
+
+function splitInlineSdtChildEvents(
+  child: InlineSdt['content'][number]
+): SplitEvent<InlineSdt['content'][number]>[] {
+  switch (child.type) {
+    case 'run':
+      return splitRunEvents(child);
+    case 'hyperlink':
+      return splitHyperlinkEvents(child);
+    case 'inlineSdt':
+      return splitInlineSdtEvents(child);
+    default:
+      return [{ type: 'content', content: child }];
+  }
+}
+
+function splitTrackedChangeEvents<T extends Insertion | Deletion | MoveFrom | MoveTo>(
+  change: T
+): SplitEvent<T>[] {
+  return splitWrappedEvents(change.content, splitTrackedChangeChildEvents, (content) => ({
+    ...change,
+    content,
+  }));
+}
+
+function splitTrackedChangeChildEvents(
+  child: Insertion['content'][number]
+): SplitEvent<Insertion['content'][number]>[] {
+  return child.type === 'run' ? splitRunEvents(child) : splitHyperlinkEvents(child);
+}
+
+function splitWrappedEvents<TChild, TWrapped>(
+  children: TChild[],
+  splitChild: (child: TChild) => SplitEvent<TChild>[],
+  wrap: (children: TChild[]) => TWrapped
+): SplitEvent<TWrapped>[] {
+  const events: SplitEvent<TWrapped>[] = [];
+  let currentChildren: TChild[] = [];
+
+  const flush = () => {
+    if (currentChildren.length === 0) return;
+    events.push({ type: 'content', content: wrap(currentChildren) });
+    currentChildren = [];
+  };
+
+  for (const child of children) {
+    for (const event of splitChild(child)) {
+      if (event.type === 'break') {
+        flush();
+        events.push({ type: 'break' });
+      } else {
+        currentChildren.push(event.content);
+      }
+    }
+  }
+
+  flush();
+  return events;
+}
+
+function segmentHasRenderableContent(segment: { content: Paragraph['content'] }): boolean {
+  return segment.content.some(contentHasRenderableContent);
+}
+
+type InlineRenderableContent =
+  | Paragraph['content'][number]
+  | Hyperlink['children'][number]
+  | InlineSdt['content'][number];
+
+function contentHasRenderableContent(content: InlineRenderableContent): boolean {
+  switch (content.type) {
+    case 'run':
+      return content.content.some((runContent) => runContent.type !== 'renderedPageBreak');
+    case 'hyperlink':
+      return content.children.some(contentHasRenderableContent);
+    case 'inlineSdt':
+    case 'insertion':
+    case 'deletion':
+    case 'moveFrom':
+    case 'moveTo':
+      return content.content.some(contentHasRenderableContent);
+    case 'simpleField':
+    case 'complexField':
+    case 'mathEquation':
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
  * Apply comment marks to PM nodes within a comment range.
  * Only the first active comment ID is used (comments don't overlap visually).
  */

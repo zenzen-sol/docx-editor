@@ -26,7 +26,7 @@ import { resolveColorToHex } from '../../../utils/colorResolver';
 import { mergeTextFormatting } from '../../../utils/textFormattingMerge';
 import type { StyleResolver } from '../../styles';
 import { resolveTextFormatting } from './marks';
-import { convertParagraph } from './paragraph';
+import { convertParagraphSegments } from './paragraph';
 
 /**
  * Resolve table style conditional formatting
@@ -748,7 +748,9 @@ function convertTableCell(
   const contentNodes: PMNode[] = [];
   for (const content of cell.content) {
     if (content.type === 'paragraph') {
-      contentNodes.push(convertParagraph(content, styleResolver, undefined, conditionalStyle?.rPr));
+      contentNodes.push(
+        ...convertParagraphSegments(content, styleResolver, undefined, conditionalStyle?.rPr)
+      );
     } else if (content.type === 'table') {
       // Nested tables - recursively convert
       contentNodes.push(convertTable(content, styleResolver));

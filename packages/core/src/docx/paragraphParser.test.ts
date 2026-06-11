@@ -126,6 +126,29 @@ describe('parseParagraph rendered page break markers', () => {
 
     expect(paragraph.renderedPageBreakBefore).toBeUndefined();
   });
+
+  test('preserves inline rendered page break markers inside run content', () => {
+    const paragraph = parseParagraphXml(`
+      <w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+        <w:r>
+          <w:t>Previous page</w:t>
+          <w:lastRenderedPageBreak/>
+          <w:t>Next page</w:t>
+        </w:r>
+      </w:p>
+    `);
+
+    const run = paragraph.content[0];
+    expect(run?.type).toBe('run');
+    if (!run || run.type !== 'run') return;
+
+    expect(run.content.map((content) => content.type)).toEqual([
+      'text',
+      'renderedPageBreak',
+      'text',
+    ]);
+    expect(paragraph.renderedPageBreakBefore).toBeUndefined();
+  });
 });
 
 describe('parseParagraph SDT content preservation', () => {

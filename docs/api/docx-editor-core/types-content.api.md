@@ -481,6 +481,12 @@ export interface PropertyChangeInfo extends TrackedChangeInfo {
 }
 
 // @public
+export interface RenderedPageBreakContent {
+    // (undocumented)
+    type: 'renderedPageBreak';
+}
+
+// @public
 export interface Run {
     content: RunContent[];
     formatting?: TextFormatting;
@@ -490,7 +496,7 @@ export interface Run {
 }
 
 // @public
-export type RunContent = TextContent | TabContent | BreakContent | SymbolContent | NoteReferenceContent | NoteRefMarkContent | SeparatorContent | FieldCharContent | InstrTextContent | SoftHyphenContent | NoBreakHyphenContent | DrawingContent | ShapeContent;
+export type RunContent = TextContent | TabContent | BreakContent | RenderedPageBreakContent | SymbolContent | NoteReferenceContent | NoteRefMarkContent | SeparatorContent | FieldCharContent | InstrTextContent | SoftHyphenContent | NoBreakHyphenContent | DrawingContent | ShapeContent;
 
 // @public
 export interface RunPropertyChange {
