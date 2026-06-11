@@ -1,5 +1,16 @@
 # @eigenpal/docx-editor-vue
 
+## 1.4.1
+
+### Patch Changes
+
+- d090d08: Fix Vue: replying to a tracked change now threads the reply under that suggestion instead of creating a top-level comment, and the sidebar re-stacks cards when one expands so an expanded card no longer overlaps the next. Fixes #773.
+- Updated dependencies [335ad6c]
+- Updated dependencies [c5a4b1e]
+  - @eigenpal/docx-editor-core@1.4.1
+  - @eigenpal/docx-editor-agents@1.4.1
+  - @eigenpal/docx-editor-i18n@1.4.1
+
 ## 1.4.0
 
 ### Minor Changes
