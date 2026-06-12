@@ -1,0 +1,1 @@
+'use strict';var chunkSTIFLZZR_js=require('./chunk-STIFLZZR.js');var t=new chunkSTIFLZZR_js.r(chunkSTIFLZZR_js.q());t.buildSchema();t.initializeRuntime();var s=t,n=t.getSchema();exports.a=s;exports.b=n;
